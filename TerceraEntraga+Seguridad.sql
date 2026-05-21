@@ -1,3 +1,15 @@
+-- ============================================================================
+-- BASES DE DATOS II -- TRABAJO GRUPO PAU
+-- TERCERA ENTREGA: OCUPACION, SEGURIDAD, TRIGGERS + RUBRICA
+-- Universidad de Malaga -- ETSI Informatica -- 2025-26
+-- ============================================================================
+-- INSTRUCCIONES:
+--   1. Ejecutar despues de SegundaEntrega.sql
+--   2. Conectarse como SYS
+-- ============================================================================
+
+ALTER SESSION SET CURRENT_SCHEMA = PAU;
+
 -- Vistas de Ocupación
 CREATE OR REPLACE VIEW V_OCUPACION_ASIGNADA AS
 SELECT 
@@ -182,10 +194,21 @@ END PK_OCUPACION;
 
 -- Seguridad
 -- Modificamos las tablas para almacenar el usuario de base de datos generado
-ALTER TABLE ESTUDIANTE ADD Usuario_BD VARCHAR2(30);
-ALTER TABLE VOCAL ADD Usuario_BD VARCHAR2(30);
+BEGIN EXECUTE IMMEDIATE 'ALTER TABLE ESTUDIANTE ADD Usuario_BD VARCHAR2(30)'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'ALTER TABLE VOCAL ADD Usuario_BD VARCHAR2(30)'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
 
--- Creamos los roles 
+GRANT CREATE SEQUENCE TO PAU;
+
+BEGIN EXECUTE IMMEDIATE 'DROP ROLE ROL_ESTUDIANTE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP ROLE ROL_VOCAL'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP ROLE ROL_ACCESO'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+-- Creamos los roles
 CREATE ROLE ROL_ESTUDIANTE;
 CREATE ROLE ROL_VOCAL;
 
@@ -200,26 +223,16 @@ GRANT SELECT ON EXAMEN TO ROL_VOCAL;
 -- Paquete PK_SEGURIDAD_PAU
 CREATE OR REPLACE PACKAGE PK_SEGURIDAD_PAU AS
     PROCEDURE PR_CREA_ESTUDIANTE(
-        p_dni IN VARCHAR2, 
-        p_usuario OUT VARCHAR2, 
-        p_password OUT VARCHAR2
-    );
-    
+        p_dni VARCHAR2, p_usuario OUT VARCHAR2, p_password OUT VARCHAR2);
     PROCEDURE PR_CREA_VOCAL(
-        p_dni IN VARCHAR2, 
-        p_usuario OUT VARCHAR2, 
-        p_password OUT VARCHAR2
-    );
+        p_dni VARCHAR2, p_usuario OUT VARCHAR2, p_password OUT VARCHAR2);
 END PK_SEGURIDAD_PAU;
 /
 
 CREATE OR REPLACE PACKAGE BODY PK_SEGURIDAD_PAU AS
 
-    -- PROCEDIMIENTO PARA ESTUDIANTES
     PROCEDURE PR_CREA_ESTUDIANTE(
-        p_dni IN VARCHAR2, 
-        p_usuario OUT VARCHAR2, 
-        p_password OUT VARCHAR2
+        p_dni VARCHAR2, p_usuario OUT VARCHAR2, p_password OUT VARCHAR2
     ) AS
         v_count NUMBER;
     BEGIN
@@ -254,11 +267,8 @@ CREATE OR REPLACE PACKAGE BODY PK_SEGURIDAD_PAU AS
     END PR_CREA_ESTUDIANTE;
 
 
-    -- PROCEDIMIENTO PARA VOCALES
     PROCEDURE PR_CREA_VOCAL(
-        p_dni IN VARCHAR2, 
-        p_usuario OUT VARCHAR2, 
-        p_password OUT VARCHAR2
+        p_dni VARCHAR2, p_usuario OUT VARCHAR2, p_password OUT VARCHAR2
     ) AS
         v_count NUMBER;
     BEGIN
@@ -335,80 +345,76 @@ END TR_BORRA_AULA;
 
 -- Procedimientos adicionales
 -- Añadimos las columnas requeridas por el enunciado a la tabla ASISTENCIA
-ALTER TABLE ASISTENCIA ADD Aula_Codigo VARCHAR2(20);
-ALTER TABLE ASISTENCIA ADD Sede_Codigo VARCHAR2(20);
+BEGIN EXECUTE IMMEDIATE 'ALTER TABLE ASISTENCIA ADD Aula_Codigo VARCHAR2(20)'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'ALTER TABLE ASISTENCIA ADD Sede_Codigo VARCHAR2(20)'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
 
 -- Procedimiento DESPISTE
 CREATE OR REPLACE PROCEDURE DESPISTE(
-    p_dni IN VARCHAR2,
-    p_examen_fecha IN DATE,
-    p_aula_nueva IN VARCHAR2,
-    p_sede_nueva IN VARCHAR2
+    p_dni VARCHAR2, p_examen_fecha DATE,
+    p_aula_nueva VARCHAR2, p_sede_nueva VARCHAR2
 ) AS
     v_primera_hora DATE;
     v_aula_libre VARCHAR2(20);
 BEGIN
-    -- a. Obtener la primera hora de examen del alumno para la fecha actual
     SELECT MIN(Examen_FechayHora) INTO v_primera_hora
     FROM ASISTENCIA
-    WHERE Estudiante_DNI = p_dni AND TRUNC(Examen_FechayHora) = TRUNC(SYSDATE);
+    WHERE Estudiante_DNI = p_dni
+      AND TRUNC(Examen_FechayHora) = TRUNC(p_examen_fecha);
 
-    -- Comprobar si falta menos de una hora para el primer examen
-    IF v_primera_hora NOT BETWEEN SYSDATE AND (SYSDATE + 1/24) THEN
-        RAISE_APPLICATION_ERROR(-20001, 'No se puede reubicar: Falta más de una hora o ya ha comenzado el examen.');
+    IF v_primera_hora IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20001, 'No se encontraron examenes para esa fecha.');
     END IF;
 
-    -- b. Actualizar el aula y sede del primer examen al aula pasada como parámetro
-    UPDATE ASISTENCIA
-    SET Aula_Codigo = p_aula_nueva,
-        Sede_Codigo = p_sede_nueva
-    WHERE Estudiante_DNI = p_dni 
-      AND Examen_FechayHora = v_primera_hora;
+    IF NOT (v_primera_hora BETWEEN SYSDATE AND (SYSDATE + 1/24)) THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Fuera de ventana de reubicacion (1h).');
+    END IF;
 
-    -- c. Para el resto de los exámenes del día, buscar un aula libre
+    UPDATE ASISTENCIA
+    SET Aula_Codigo = p_aula_nueva, Sede_Codigo = p_sede_nueva
+    WHERE Estudiante_DNI = p_dni AND Examen_FechayHora = v_primera_hora;
+
     FOR rec IN (
         SELECT Examen_FechayHora, Materia_Codigo
         FROM ASISTENCIA
-        WHERE Estudiante_DNI = p_dni 
-          AND TRUNC(Examen_FechayHora) = TRUNC(SYSDATE)
+        WHERE Estudiante_DNI = p_dni
+          AND TRUNC(Examen_FechayHora) = TRUNC(p_examen_fecha)
           AND Examen_FechayHora > v_primera_hora
     ) LOOP
-        -- Buscar un aula disponible en la sede nueva (ocupación < Capacidad_Examen)
         BEGIN
             SELECT A.Codigo INTO v_aula_libre
             FROM AULA A
             WHERE A.Sede_Codigo = p_sede_nueva
               AND A.Capacidad_Examen > (
-                  SELECT COUNT(*) 
-                  FROM ASISTENCIA AST 
-                  WHERE AST.Aula_Codigo = A.Codigo 
+                  SELECT COUNT(*)
+                  FROM ASISTENCIA AST
+                  WHERE AST.Aula_Codigo = A.Codigo
                     AND AST.Examen_FechayHora = rec.Examen_FechayHora
               )
-            AND ROWNUM = 1; -- Cogemos la primera que tenga hueco
+            AND ROWNUM = 1;
 
-            -- Modificamos la tabla asistencia con los nuevos datos
             UPDATE ASISTENCIA
-            SET Aula_Codigo = v_aula_libre,
-                Sede_Codigo = p_sede_nueva
-            WHERE Estudiante_DNI = p_dni 
-              AND Examen_FechayHora = rec.Examen_FechayHora 
+            SET Aula_Codigo = v_aula_libre, Sede_Codigo = p_sede_nueva
+            WHERE Estudiante_DNI = p_dni
+              AND Examen_FechayHora = rec.Examen_FechayHora
               AND Materia_Codigo = rec.Materia_Codigo;
-              
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20002, 'No hay aulas libres en la sede destino para el examen de las ' || TO_CHAR(rec.Examen_FechayHora, 'HH24:MI'));
+                RAISE_APPLICATION_ERROR(-20002,
+                  'No hay aulas libres en sede destino.');
         END;
     END LOOP;
-    
+
     COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN ROLLBACK; RAISE;
 END DESPISTE;
 /
 
 -- Procedimiento MIGRAR_CENTRO
 CREATE OR REPLACE PROCEDURE MIGRAR_CENTRO(
-    p_centro IN VARCHAR2,
-    p_sede_origen IN VARCHAR2,
-    p_sede_destino IN VARCHAR2
+    p_centro VARCHAR2, p_sede_origen VARCHAR2, p_sede_destino VARCHAR2
 ) AS
     v_aula_libre VARCHAR2(20);
 BEGIN
@@ -481,10 +487,13 @@ GRANT SELECT ON V_MI_ASIGNACION TO ROL_ESTUDIANTE;
 GRANT SELECT ON V_MIS_DATOS TO ROL_ESTUDIANTE;
 
 -- Añadimos la columna a la tabla física
-ALTER TABLE EXAMEN ADD Num_Estudiantes_Presentes NUMBER;
+BEGIN EXECUTE IMMEDIATE 'ALTER TABLE EXAMEN ADD Num_Estudiantes_Presentes NUMBER'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
 
--- Añadimos una restricción semántica (CHECK) para que no sea negativo
-ALTER TABLE EXAMEN ADD CONSTRAINT CHK_EXAMEN_NUM_EST CHECK (Num_Estudiantes_Presentes >= 0);
+BEGIN EXECUTE IMMEDIATE 'ALTER TABLE EXAMEN DROP CONSTRAINT CHK_EXAMEN_NUM_EST'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+ALTER TABLE EXAMEN ADD CONSTRAINT CHK_EXAMEN_NUM_EST
+  CHECK (Num_Estudiantes_Presentes >= 0);
 
 CREATE OR REPLACE VIEW V_MI_VIGILANCIA AS
 SELECT 
@@ -536,47 +545,45 @@ JOIN ESTUDIANTE e ON a.Estudiante_DNI = e.DNI
 JOIN CENTRO c ON e.Centro_Codigo = c.Codigo
 JOIN SEDE s ON a.Sede_Codigo = s.Codigo;
 
--- Creamos el rol para el personal de acceso
+-- ============================================================================
+-- ROL ACCESO Y PERMISOS
+-- ============================================================================
+
 CREATE ROLE ROL_ACCESO;
 GRANT CREATE SESSION TO ROL_ACCESO;
 GRANT SELECT ON V_ASIGNACION_GLOBAL TO ROL_ACCESO;
-
--- Tienen permiso para ejecutar el paquete de asignación (el de tu Segunda Entrega)
 GRANT EXECUTE ON PK_ASIGNA TO ROL_ACCESO;
-
--- Pueden ver las vistas de ocupación (de tu Tercera Entrega)
 GRANT SELECT ON V_OCUPACION_ASIGNADA TO ROL_ACCESO;
 GRANT SELECT ON V_OCUPACION TO ROL_ACCESO;
 GRANT SELECT ON V_VIGILANTES TO ROL_ACCESO;
-GRANT SELECT ON V_ASIGNACION_GLOBAL TO ROL_ACCESO;
-
--- Permiso para gestionar (UPDATE) los responsables y secretarios en las sedes
 GRANT UPDATE (Vocal_Responsable_DNI, Vocal_Secretario_DNI) ON SEDE TO ROL_ACCESO;
 
-----------------------------------------------------------------------
--- BLOQUE DE SEGURIDAD
-----------------------------------------------------------------------
 
--- 1) Política básica de contraseñas (perfil por defecto)
+-- ============================================================================
+-- SEGURIDAD: Politicas, auditoria, restricciones
+-- ============================================================================
+
+-- Politica de contraseñas
 ALTER PROFILE DEFAULT LIMIT
   FAILED_LOGIN_ATTEMPTS 5
   PASSWORD_LIFE_TIME    30
   PASSWORD_GRACE_TIME   5
   PASSWORD_LOCK_TIME    1;
 
--- 2) Validación estricta de DNI para evitar SQL injection
---    en el SQL dinámico que crea usuarios (PK_SEGURIDAD_PAU)
+-- Validacion DNI
+BEGIN EXECUTE IMMEDIATE 'ALTER TABLE ESTUDIANTE DROP CONSTRAINT CHK_ESTUDIANTE_DNI_FORMAT'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'ALTER TABLE VOCAL DROP CONSTRAINT CHK_VOCAL_DNI_FORMAT'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
 ALTER TABLE ESTUDIANTE ADD CONSTRAINT CHK_ESTUDIANTE_DNI_FORMAT
-  CHECK (REGEXP_LIKE(DNI, '^[0-9]{8}[A-Z]$'));
+  CHECK (REGEXP_LIKE(DNI, '^[0-9]{8}[A-Z]$')) NOVALIDATE;
 
 ALTER TABLE VOCAL ADD CONSTRAINT CHK_VOCAL_DNI_FORMAT
-  CHECK (REGEXP_LIKE(DNI, '^[0-9]{8}[A-Z]$'));
+  CHECK (REGEXP_LIKE(DNI, '^[0-9]{8}[A-Z]$')) NOVALIDATE;
 
--- 3) Política VPD mínima: cada usuario sólo ve su propio registro
---    de ESTUDIANTE en base a la columna Usuario_BD
+-- VPD para estudiantes
 CREATE OR REPLACE FUNCTION FN_ESTUDIANTE_VPD(
-  p_schema IN VARCHAR2,
-  p_object IN VARCHAR2
+  p_schema VARCHAR2, p_object VARCHAR2
 ) RETURN VARCHAR2 AS
 BEGIN
   RETURN 'Usuario_BD = USER';
@@ -584,15 +591,92 @@ END;
 /
 
 BEGIN
+  DBMS_RLS.DROP_POLICY(
+    object_schema => 'PAU',
+    object_name   => 'ESTUDIANTE',
+    policy_name   => 'POL_ESTUDIANTE_VPD'
+  );
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+BEGIN
   DBMS_RLS.ADD_POLICY(
-    object_schema   => USER,
-    object_name     => 'ESTUDIANTE',
-    policy_name     => 'POL_ESTUDIANTE_VPD',
-    function_schema => USER,
+    object_schema => 'PAU',
+    object_name   => 'ESTUDIANTE',
+    policy_name   => 'POL_ESTUDIANTE_VPD',
+    function_schema => 'PAU',
     policy_function => 'FN_ESTUDIANTE_VPD'
   );
 END;
 /
-  
--- 4) Auditoría de cambios en asistentes a examen
-AUDIT UPDATE ON ASISTENCIA BY ACCESS;
+
+-- Auditoria unificada (Oracle 23ai)
+BEGIN
+  EXECUTE IMMEDIATE 'NOAUDIT POLICY audit_asistencia_updates';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+BEGIN
+  EXECUTE IMMEDIATE 'DROP AUDIT POLICY audit_asistencia_updates';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+CREATE AUDIT POLICY audit_asistencia_updates
+  ACTIONS UPDATE ON PAU.ASISTENCIA;
+AUDIT POLICY audit_asistencia_updates;
+
+
+-- ============================================================================
+-- RUBRICA: RESTRICCIONES ADICIONALES
+-- ============================================================================
+
+BEGIN EXECUTE IMMEDIATE 'ALTER TABLE ASISTENCIA DROP CONSTRAINT CHK_ASISTENCIA_ASISTE_VALUES'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'ALTER TABLE ASISTENCIA DROP CONSTRAINT CHK_ASISTENCIA_ENTREGA_VALUES'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'ALTER TABLE CENTRO DROP CONSTRAINT CHK_CENTRO_NOMBRE_NOT_NULL'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+ALTER TABLE ASISTENCIA ADD CONSTRAINT CHK_ASISTENCIA_ASISTE_VALUES
+  CHECK (Asiste IN ('S', 'N'));
+
+ALTER TABLE ASISTENCIA ADD CONSTRAINT CHK_ASISTENCIA_ENTREGA_VALUES
+  CHECK (Entrega IN ('S', 'N'));
+
+ALTER TABLE CENTRO ADD CONSTRAINT CHK_CENTRO_NOMBRE_NOT_NULL
+  CHECK (Nombre IS NOT NULL);
+
+
+-- ============================================================================
+-- COMPROBACIONES FINALES
+-- ============================================================================
+
+SELECT 'TABLAS' AS tipo, COUNT(*) AS total FROM user_tables
+UNION ALL
+SELECT 'INDICES', COUNT(*) FROM user_indexes
+UNION ALL
+SELECT 'VISTAS', COUNT(*) FROM user_views
+UNION ALL
+SELECT 'PROCEDIMIENTOS', COUNT(*) FROM user_objects WHERE object_type = 'PROCEDURE'
+UNION ALL
+SELECT 'PAQUETES', COUNT(*) FROM user_objects WHERE object_type = 'PACKAGE'
+UNION ALL
+SELECT 'TRIGGERS', COUNT(*) FROM user_triggers;
+
+SELECT 'VOCALES' AS tabla, COUNT(*) AS total FROM VOCAL
+UNION ALL
+SELECT 'MATERIAS', COUNT(*) FROM MATERIA
+UNION ALL
+SELECT 'SEDES', COUNT(*) FROM SEDE
+UNION ALL
+SELECT 'ESTUDIANTES', COUNT(*) FROM ESTUDIANTE
+UNION ALL
+SELECT 'CENTROS', COUNT(*) FROM CENTRO
+UNION ALL
+SELECT 'MATRICULAS', COUNT(*) FROM ESTUDIANTE_MATERIA;
+
+PROMPT ========================================
+PROMPT TERCERA ENTREGA COMPLETADA
+PROMPT ========================================

@@ -1,57 +1,47 @@
--- Usuario SYS
-GRANT CREATE SEQUENCE TO PAU;
+-- ============================================================================
+-- BASES DE DATOS II -- TRABAJO GRUPO PAU
+-- SEGUNDA ENTREGA: INDICES, MV, CENTROS, ASIGNACION
+-- Universidad de Malaga -- ETSI Informatica -- 2025-26
+-- ============================================================================
+-- INSTRUCCIONES:
+--   1. Ejecutar despues de PrimeraEntrega.sql
+--   2. Conectarse como SYS (excepto donde se indique)
+-- ============================================================================
 
--- Usuario PAU (a partir de ahora se ejecuta todo con este usuario)
--- Asignar todos los indices creados junto con el diagrama ER al tablespace TS_INDICES
-ALTER INDEX ANE_PK REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX ASISTENCIA_PK REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX AULA_PK REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX CENTRO_PK REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX ESTUDIANTE_MATERIA_PK REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX ESTUDIANTE_PK REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX EXAMEN_MATERIA_PK REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX EXAMEN_PK REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX EXAMEN_VOCAL_VIGILANTES_PK REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX MATERIA_PK REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX SEDE_PK REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX SEDE_UQ_VOCAL_RESP REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX SEDE_UQ_VOCAL_SEC REBUILD TABLESPACE TS_INDICES;
-ALTER INDEX VOCAL_PK REBUILD TABLESPACE TS_INDICES;
+-- Reconstruir indices existentes en TS_INDICES
+DECLARE
+  CURSOR c_indices IS
+    SELECT index_name FROM user_indexes
+    WHERE tablespace_name != 'TS_INDICES' OR tablespace_name IS NULL;
+BEGIN
+  FOR idx IN c_indices LOOP
+    BEGIN
+      EXECUTE IMMEDIATE 'ALTER INDEX ' || idx.index_name || ' REBUILD TABLESPACE TS_INDICES';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+  END LOOP;
+END;
+/
 
--- Comprobar que los indices han sido reasignados correctamente
-SELECT INDEX_NAME, TABLESPACE_NAME FROM USER_INDEXES;
+-- Indices adicionales
+CREATE INDEX IDX_ESTUDIANTE_APELLIDOS_UP
+  ON ESTUDIANTE (UPPER(Apellidos)) TABLESPACE TS_INDICES;
+CREATE INDEX IDX_ESTUDIANTE_CORREO
+  ON ESTUDIANTE (Correo) TABLESPACE TS_INDICES;
+CREATE BITMAP INDEX IDX_ESTUDIANTE_CENTRO_BM
+  ON ESTUDIANTE (Centro_Codigo) TABLESPACE TS_INDICES;
 
--- Nuevos índices
-CREATE INDEX IDX_ESTUDIANTE_APELLIDOS_UP ON ESTUDIANTE (UPPER(Apellidos)) TABLESPACE TS_INDICES;
-CREATE INDEX IDX_ESTUDIANTE_CORREO ON ESTUDIANTE (Correo) TABLESPACE TS_INDICES;
-CREATE BITMAP INDEX IDX_ESTUDIANTE_CENTRO_BM ON ESTUDIANTE (Centro_Codigo) TABLESPACE TS_INDICES;
+-- Indices para busquedas frecuentes
+CREATE INDEX IDX_ASISTENCIA_EST
+  ON ASISTENCIA (Estudiante_DNI) TABLESPACE TS_INDICES;
+CREATE INDEX IDX_ASISTENCIA_EXAMEN
+  ON ASISTENCIA (Examen_FechayHora) TABLESPACE TS_INDICES;
 
--- Comprobar los índices
-SELECT table_name, index_name, index_type, tablespace_name FROM user_indexes WHERE table_name = 'ESTUDIANTE';
-SELECT table_name, tablespace_name FROM user_tables WHERE table_name = 'ESTUDIANTE';
-
--- view materializada
-CREATE MATERIALIZED VIEW VM_ESTUDIANTES
-BUILD IMMEDIATE
-REFRESH FORCE ON DEMAND
-START WITH TRUNC(SYSDATE + 1)
-NEXT TRUNC(SYSDATE + 1)
-AS
-SELECT * FROM V_ESTUDIANTES;
-
-CREATE PUBLIC SYNONYM S_ESTUDIANTES FOR VM_ESTUDIANTES;
-SELECT SYNONYM_NAME, TABLE_OWNER, TABLE_NAME
-FROM ALL_SYNONYMS
-WHERE SYNONYM_NAME = 'S_ESTUDIANTES';
-
-ALTER TABLE CENTRO MODIFY (Sede_Codigo NULL);
-
--- secuencia SEQ_CENTROS
+-- Secuencia y trigger para centros
 CREATE SEQUENCE SEQ_CENTROS;
 
--- trigger tr_centros
 CREATE OR REPLACE TRIGGER tr_centros
-BEFORE INSERT ON CENTRO 
+BEFORE INSERT ON CENTRO
 FOR EACH ROW
 BEGIN
     IF :new.Codigo IS NULL THEN
@@ -60,32 +50,57 @@ BEGIN
 END tr_centros;
 /
 
--- Prueba de inserción
-INSERT INTO CENTRO (Nombre) VALUES ('Ejemplo');
-SELECT * FROM CENTRO;
-ROLLBACK;
 
--- Insertamos los centros reales desde la vista V_ESTUDIANTES
-INSERT INTO CENTRO (Nombre) 
+-- ============================================================================
+-- POBLAR CENTROS Y ESTUDIANTES
+-- ============================================================================
+
+-- Insertar centros desde la vista
+INSERT INTO CENTRO (Nombre)
 SELECT DISTINCT centro FROM v_estudiantes;
 
--- Comprobamos
-SELECT * FROM CENTRO;
 COMMIT;
 
--- Insertamos los estudiantes reales desde la vista V_ESTUDIANTES
+-- Insertar estudiantes desde la vista
 INSERT INTO ESTUDIANTE (DNI, Nombre, Apellidos, Telefono, Correo, Centro_Codigo)
-SELECT 
-    v.dni, 
-    v.nombre, 
-    v.apellidos, 
-    v.telefono, 
-    v.correo, 
+SELECT
+    v.dni,
+    v.nombre,
+    v.apellidos,
+    v.telefono,
+    v.correo,
     c.Codigo
 FROM V_ESTUDIANTES v
-JOIN CENTRO c ON v.centro = c.Nombre;
+JOIN CENTRO c ON UPPER(v.centro) = UPPER(c.Nombre);
 
--- Creacion del paquete junto con la declaracion de sus funciones
+COMMIT;
+
+-- Matricular estudiantes
+EXEC PR_MATRICULA_ESTUDIANTES;
+
+-- Vista materializada y sinonimo
+CONNECT pau/pau@FREEPDB1
+
+CREATE MATERIALIZED VIEW VM_ESTUDIANTES
+BUILD IMMEDIATE
+REFRESH FORCE ON DEMAND
+START WITH TRUNC(SYSDATE + 1)
+NEXT TRUNC(SYSDATE + 1)
+AS
+SELECT e.DNI, e.Nombre, e.Apellidos, e.Telefono, e.Correo, c.Nombre AS Centro
+FROM PAU.ESTUDIANTE e
+JOIN PAU.CENTRO c ON e.Centro_Codigo = c.Codigo;
+
+CREATE PUBLIC SYNONYM S_ESTUDIANTES FOR VM_ESTUDIANTES;
+
+CONNECT sys/oracle@FREEPDB1 as sysdba
+ALTER SESSION SET CURRENT_SCHEMA = PAU;
+
+
+-- ============================================================================
+-- PAQUETE PK_ASIGNA
+-- ============================================================================
+
 CREATE OR REPLACE PACKAGE PK_ASIGNA AS
     FUNCTION F_PLAZAS(PSEDE IN VARCHAR2) RETURN NUMBER;
     PROCEDURE PR_ASIGNA_SEDE;
@@ -98,13 +113,10 @@ CREATE OR REPLACE PACKAGE BODY PK_ASIGNA AS
         v_capacidad NUMBER;
         v_estudiantes NUMBER;
     BEGIN
-        SELECT NVL(SUM(CAPACIDAD_EXAMEN), 0)
-        INTO v_capacidad
-        FROM AULA
-        WHERE SEDE_CODIGO = PSEDE;
+        SELECT NVL(SUM(CAPACIDAD_EXAMEN), 0) INTO v_capacidad
+        FROM AULA WHERE SEDE_CODIGO = PSEDE;
 
-        SELECT NVL(COUNT(*), 0)
-        INTO v_estudiantes
+        SELECT NVL(COUNT(*), 0) INTO v_estudiantes
         FROM ESTUDIANTE e
         JOIN CENTRO c ON e.CENTRO_CODIGO = c.CODIGO
         WHERE c.SEDE_CODIGO = PSEDE;
@@ -113,10 +125,8 @@ CREATE OR REPLACE PACKAGE BODY PK_ASIGNA AS
     END F_PLAZAS;
 
     PROCEDURE PR_ASIGNA_SEDE AS
-        -- Declaramos una excepcion personalizada para cuando no haya espacio
         e_sin_espacio EXCEPTION;
-        
-        -- Cursor para obtener los centros sin sede, ordenados por numero de estudiantes (de mayor a menor)
+
         CURSOR c_centros_pendientes IS
             SELECT c.CODIGO, COUNT(e.DNI) as total_estudiantes
             FROM CENTRO c
@@ -128,27 +138,23 @@ CREATE OR REPLACE PACKAGE BODY PK_ASIGNA AS
         v_mejor_sede VARCHAR2(50);
         v_max_plazas NUMBER;
     BEGIN
-        -- Auto-asignar los centros que son Sede (tipo INSTITUTO)
-        -- Usamos UPPER para no tener problemas con las mayusculas/minusculas
+        -- Auto-asignar centros que son institutos
         UPDATE CENTRO c
         SET SEDE_CODIGO = (
-            SELECT s.CODIGO 
-            FROM SEDE s 
-            WHERE UPPER(s.NOMBRE) = UPPER(c.NOMBRE) 
+            SELECT s.CODIGO
+            FROM SEDE s
+            WHERE UPPER(s.NOMBRE) = UPPER(c.NOMBRE)
               AND UPPER(s.TIPO) = 'INSTITUTO'
         )
         WHERE EXISTS (
-            SELECT 1 
-            FROM SEDE s 
-            WHERE UPPER(s.NOMBRE) = UPPER(c.NOMBRE) 
+            SELECT 1
+            FROM SEDE s
+            WHERE UPPER(s.NOMBRE) = UPPER(c.NOMBRE)
               AND UPPER(s.TIPO) = 'INSTITUTO'
         );
 
-        -- Recorrer el resto de centros pendientes
+        -- Recorrer centros pendientes
         FOR v_centro IN c_centros_pendientes LOOP
-            
-            -- Buscar la sede que tenga mas plazas libres EN ESTE MOMENTO
-            -- Usamos ROWNUM = 1 para quedarnos solo con la que mas tiene
             SELECT CODIGO, plazas_libres INTO v_mejor_sede, v_max_plazas
             FROM (
                 SELECT CODIGO, PK_ASIGNA.F_PLAZAS(CODIGO) as plazas_libres
@@ -157,28 +163,59 @@ CREATE OR REPLACE PACKAGE BODY PK_ASIGNA AS
             )
             WHERE ROWNUM = 1;
 
-            -- Comprobar si el centro cabe entero en la mejor sede
             IF v_max_plazas >= v_centro.total_estudiantes THEN
-                -- Si hay espacio, asignamos la sede al centro
                 UPDATE CENTRO
                 SET SEDE_CODIGO = v_mejor_sede
                 WHERE CODIGO = v_centro.CODIGO;
             ELSE
-                -- Si no hay espacio, elevamos la excepcion para no dividir el centro
                 RAISE e_sin_espacio;
             END IF;
-
         END LOOP;
 
-        -- Si todo el proceso termina bien, confirmamos los cambios
         COMMIT;
 
     EXCEPTION
         WHEN e_sin_espacio THEN
-            -- Deshacemos todo lo de este procedimiento y mostramos el error
             ROLLBACK;
-            RAISE_APPLICATION_ERROR(-20001, 'Error: No hay plazas suficientes en ninguna sede para albergar a todo un centro sin dividirlo.');
+            RAISE_APPLICATION_ERROR(-20001,
+              'Error: No hay plazas suficientes en ninguna sede.');
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE;
     END PR_ASIGNA_SEDE;
 
 END PK_ASIGNA;
 /
+
+
+-- ============================================================================
+-- COMPROBACIONES FINALES
+-- ============================================================================
+
+SELECT 'TABLAS' AS tipo, COUNT(*) AS total FROM user_tables
+UNION ALL
+SELECT 'INDICES', COUNT(*) FROM user_indexes
+UNION ALL
+SELECT 'VISTAS', COUNT(*) FROM user_views
+UNION ALL
+SELECT 'PROCEDIMIENTOS', COUNT(*) FROM user_objects WHERE object_type = 'PROCEDURE'
+UNION ALL
+SELECT 'PAQUETES', COUNT(*) FROM user_objects WHERE object_type = 'PACKAGE'
+UNION ALL
+SELECT 'TRIGGERS', COUNT(*) FROM user_triggers;
+
+SELECT 'VOCALES' AS tabla, COUNT(*) AS total FROM VOCAL
+UNION ALL
+SELECT 'MATERIAS', COUNT(*) FROM MATERIA
+UNION ALL
+SELECT 'SEDES', COUNT(*) FROM SEDE
+UNION ALL
+SELECT 'ESTUDIANTES', COUNT(*) FROM ESTUDIANTE
+UNION ALL
+SELECT 'CENTROS', COUNT(*) FROM CENTRO
+UNION ALL
+SELECT 'MATRICULAS', COUNT(*) FROM ESTUDIANTE_MATERIA;
+
+PROMPT ========================================
+PROMPT SEGUNDA ENTREGA COMPLETADA
+PROMPT ========================================
