@@ -34,8 +34,7 @@ GRANT CREATE VIEW, CREATE MATERIALIZED VIEW, CREATE PROCEDURE,
       CREATE SEQUENCE, CREATE TRIGGER, CREATE SYNONYM, CREATE PUBLIC SYNONYM TO PAU;
 
 -- Directorio para tabla externa
--- CAMBIAR LA RUTA por la de tu sistema (ej: Windows: C:\app\alumnos\admin\orcl\dpdump)
-CREATE OR REPLACE DIRECTORY directorio_ext AS '/opt/oracle/admin/FREE/dpdump';
+CREATE OR REPLACE DIRECTORY directorio_ext AS 'C:\app\alumnos\admin\orcl\dpdump';
 GRANT READ, WRITE ON DIRECTORY directorio_ext TO PAU;
 
 -- Permisos adicionales
@@ -652,8 +651,8 @@ COMMIT;
 EXEC PR_MATRICULA_ESTUDIANTES;
 
 -- Vista materializada y sinonimo (conectar como PAU para evitar restricciones de SYS)
--- IMPORTANTE: Cambiar sesion a usuario PAU antes de continuar
-ALTER SESSION SET CURRENT_SCHEMA = PAU;
+-- CAMBIAR a conexion como usuario PAU en SQL Developer antes de continuar
+-- (ALTER SESSION SET CURRENT_SCHEMA no es suficiente; debe ser conexion real como PAU)
 
 CREATE MATERIALIZED VIEW VM_ESTUDIANTES
 BUILD IMMEDIATE
@@ -667,8 +666,7 @@ JOIN PAU.CENTRO c ON e.Centro_Codigo = c.Codigo;
 
 CREATE PUBLIC SYNONYM S_ESTUDIANTES FOR VM_ESTUDIANTES;
 
--- IMPORTANTE: Cambiar sesion a SYS antes de continuar
--- En SQL Developer: nueva conexion como SYS
+-- CAMBIAR a conexion como SYS en SQL Developer antes de continuar
 ALTER SESSION SET CURRENT_SCHEMA = PAU;
 
 

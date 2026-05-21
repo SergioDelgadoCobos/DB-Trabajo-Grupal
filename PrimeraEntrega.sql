@@ -29,8 +29,7 @@ GRANT CREATE VIEW, CREATE MATERIALIZED VIEW, CREATE PROCEDURE,
       CREATE SEQUENCE, CREATE TRIGGER, CREATE SYNONYM, CREATE PUBLIC SYNONYM TO PAU;
 
 -- Directorio para tabla externa
--- CAMBIAR LA RUTA por la de tu sistema (ej: Windows: C:\app\alumnos\admin\orcl\dpdump)
-CREATE OR REPLACE DIRECTORY directorio_ext AS '/opt/oracle/admin/FREE/dpdump';
+CREATE OR REPLACE DIRECTORY directorio_ext AS 'C:\app\alumnos\admin\orcl\dpdump';
 GRANT READ, WRITE ON DIRECTORY directorio_ext TO PAU;
 
 -- Permisos adicionales

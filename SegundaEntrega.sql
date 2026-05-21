@@ -79,8 +79,8 @@ COMMIT;
 EXEC PR_MATRICULA_ESTUDIANTES;
 
 -- Vista materializada y sinonimo
--- IMPORTANTE: Cambiar sesion a usuario PAU antes de continuar
-ALTER SESSION SET CURRENT_SCHEMA = PAU;
+-- CAMBIAR a conexion como usuario PAU en SQL Developer antes de continuar
+-- (ALTER SESSION SET CURRENT_SCHEMA no es suficiente; debe ser conexion real como PAU)
 
 CREATE MATERIALIZED VIEW VM_ESTUDIANTES
 BUILD IMMEDIATE
@@ -94,8 +94,7 @@ JOIN PAU.CENTRO c ON e.Centro_Codigo = c.Codigo;
 
 CREATE PUBLIC SYNONYM S_ESTUDIANTES FOR VM_ESTUDIANTES;
 
--- IMPORTANTE: Cambiar sesion a SYS antes de continuar
--- En SQL Developer: conexion como SYS
+-- CAMBIAR a conexion como SYS en SQL Developer antes de continuar
 ALTER SESSION SET CURRENT_SCHEMA = PAU;
 
 
