@@ -80,8 +80,8 @@ CREATE OR REPLACE PACKAGE BODY PK_OCUPACION AS
         v_max_personas NUMBER;
     BEGIN
         SELECT NVL(MAX(
-            -- Total de alumnos asignados al examen 
-            (SELECT COUNT(*) FROM ASISTENCIA WHERE Examen_FechayHora = E.FechayHora) +
+            -- Total de alumnos asignados al examen en ese aula
+            (SELECT COUNT(*) FROM ASISTENCIA WHERE Examen_FechayHora = E.FechayHora AND Aula_Codigo = p_aula) +
             -- Total de vocales (Principal + Vigilantes) en ese aula 
             (SELECT COUNT(*) FROM (
                 SELECT Vocal_DNI FROM EXAMEN WHERE FechayHora = E.FechayHora
@@ -108,10 +108,10 @@ CREATE OR REPLACE PACKAGE BODY PK_OCUPACION AS
         WHERE E.FechayHora > SYSDATE
         AND (
             -- Alumnos asignados superan la Capacidad_Examen
-            (SELECT COUNT(*) FROM ASISTENCIA WHERE Examen_FechayHora = E.FechayHora) > A.Capacidad_Examen
+            (SELECT COUNT(*) FROM ASISTENCIA WHERE Examen_FechayHora = E.FechayHora AND Aula_Codigo = E.Aula_Codigo) > A.Capacidad_Examen
             OR
             -- Personas totales (Alumnos + Vocales) superan la Capacidad total del aula
-            ((SELECT COUNT(*) FROM ASISTENCIA WHERE Examen_FechayHora = E.FechayHora) +
+            ((SELECT COUNT(*) FROM ASISTENCIA WHERE Examen_FechayHora = E.FechayHora AND Aula_Codigo = E.Aula_Codigo) +
              (SELECT COUNT(*) FROM (
                 SELECT Vocal_DNI FROM EXAMEN WHERE FechayHora = E.FechayHora
                 UNION
@@ -176,7 +176,7 @@ CREATE OR REPLACE PACKAGE BODY PK_OCUPACION AS
         FROM EXAMEN E
         WHERE E.FechayHora > SYSDATE
         AND (
-            SELECT COUNT(*) FROM ASISTENCIA WHERE Examen_FechayHora = E.FechayHora
+            SELECT COUNT(*) FROM ASISTENCIA WHERE Examen_FechayHora = E.FechayHora AND Aula_Codigo = E.Aula_Codigo
         ) > p_ratio * (
             SELECT COUNT(*) FROM (
                 SELECT Vocal_DNI FROM EXAMEN WHERE FechayHora = E.FechayHora

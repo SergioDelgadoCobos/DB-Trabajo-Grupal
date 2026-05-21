@@ -756,7 +756,7 @@ CREATE OR REPLACE PACKAGE BODY PK_OCUPACION AS
         v_max_personas NUMBER;
     BEGIN
         SELECT NVL(MAX(
-            (SELECT COUNT(*) FROM ASISTENCIA WHERE Examen_FechayHora = E.FechayHora) +
+            (SELECT COUNT(*) FROM ASISTENCIA WHERE Examen_FechayHora = E.FechayHora AND Aula_Codigo = p_aula) +
             (SELECT COUNT(*) FROM (
                 SELECT Vocal_DNI FROM EXAMEN WHERE FechayHora = E.FechayHora
                 UNION
@@ -781,10 +781,10 @@ CREATE OR REPLACE PACKAGE BODY PK_OCUPACION AS
         WHERE E.FechayHora > SYSDATE
         AND (
             (SELECT COUNT(*) FROM ASISTENCIA 
-              WHERE Examen_FechayHora = E.FechayHora) > A.Capacidad_Examen
+              WHERE Examen_FechayHora = E.FechayHora AND Aula_Codigo = E.Aula_Codigo) > A.Capacidad_Examen
             OR
             ((SELECT COUNT(*) FROM ASISTENCIA 
-               WHERE Examen_FechayHora = E.FechayHora) +
+               WHERE Examen_FechayHora = E.FechayHora AND Aula_Codigo = E.Aula_Codigo) +
              (SELECT COUNT(*) FROM (
                 SELECT Vocal_DNI FROM EXAMEN WHERE FechayHora = E.FechayHora
                 UNION
@@ -844,7 +844,7 @@ CREATE OR REPLACE PACKAGE BODY PK_OCUPACION AS
         WHERE E.FechayHora > SYSDATE
         AND (
             SELECT COUNT(*) FROM ASISTENCIA 
-              WHERE Examen_FechayHora = E.FechayHora
+              WHERE Examen_FechayHora = E.FechayHora AND Aula_Codigo = E.Aula_Codigo
         ) > p_ratio * (
             SELECT COUNT(*) FROM (
                 SELECT Vocal_DNI FROM EXAMEN WHERE FechayHora = E.FechayHora
@@ -1071,10 +1071,6 @@ BEGIN
                   'Error de migracion: Sin capacidad en sede destino.');
         END;
     END LOOP;
-    
-    COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN ROLLBACK; RAISE;
 END MIGRAR_CENTRO;
 /
 
