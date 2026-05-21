@@ -343,68 +343,10 @@ ALTER TABLE VOCAL ADD CONSTRAINT Vocal_Materia_FK
 -- IMPORTACION DE DATOS: VOCAL, MATERIA, SEDE
 -- ============================================================================
 
--- VOCALES desde Vocales.xlsx (197 registros)
-@@Vocales_Insert.sql
-
--- MATERIAS desde Materias.csv
-INSERT ALL
-INTO MATERIA (Codigo, Nombre) VALUES ('AleAcc', 'Aleman (Fase de Acceso)')
-INTO MATERIA (Codigo, Nombre) VALUES ('AleAd', 'Aleman (Fase de Admision)')
-INTO MATERIA (Codigo, Nombre) VALUES ('Art', 'Artes Escenicas')
-INTO MATERIA (Codigo, Nombre) VALUES ('Bio', 'Biologia')
-INTO MATERIA (Codigo, Nombre) VALUES ('Cul', 'Cultura Audiovisual II')
-INTO MATERIA (Codigo, Nombre) VALUES ('Dib', 'Dibujo Tecnico II')
-INTO MATERIA (Codigo, Nombre) VALUES ('Dis', 'Diseno')
-INTO MATERIA (Codigo, Nombre) VALUES ('Eco', 'Economia de la Empresa')
-INTO MATERIA (Codigo, Nombre) VALUES ('Fis', 'Fisica')
-INTO MATERIA (Codigo, Nombre) VALUES ('FraAcc', 'Frances (Fase de Acceso)')
-INTO MATERIA (Codigo, Nombre) VALUES ('FraAd', 'Frances (Fase de Admision)')
-INTO MATERIA (Codigo, Nombre) VALUES ('Fun', 'Fundamentos del Arte II')
-INTO MATERIA (Codigo, Nombre) VALUES ('Geog', 'Geografia')
-INTO MATERIA (Codigo, Nombre) VALUES ('Geol', 'Geologia')
-INTO MATERIA (Codigo, Nombre) VALUES ('Gri', 'Griego II')
-INTO MATERIA (Codigo, Nombre) VALUES ('HisE', 'Historia de España')
-INTO MATERIA (Codigo, Nombre) VALUES ('HisF', 'Historia de la Filosofia')
-INTO MATERIA (Codigo, Nombre) VALUES ('HisA', 'Historia del Arte')
-INTO MATERIA (Codigo, Nombre) VALUES ('IngAcc', 'Ingles (Fase de Acceso)')
-INTO MATERIA (Codigo, Nombre) VALUES ('IngAd', 'Ingles (Fase de Admision)')
-INTO MATERIA (Codigo, Nombre) VALUES ('ItaAcc', 'Italiano (Fase de Acceso)')
-INTO MATERIA (Codigo, Nombre) VALUES ('ItaAd', 'Italiano (Fase de Admision)')
-INTO MATERIA (Codigo, Nombre) VALUES ('Lat', 'Latin II')
-INTO MATERIA (Codigo, Nombre) VALUES ('Len', 'Lengua Castellana y Literatura')
-INTO MATERIA (Codigo, Nombre) VALUES ('Mat', 'Matematicas II')
-INTO MATERIA (Codigo, Nombre) VALUES ('MatApl', 'Matematicas Aplicadas a las CCSS')
-INTO MATERIA (Codigo, Nombre) VALUES ('PorAcc', 'Portugues (Fase de Acceso)')
-INTO MATERIA (Codigo, Nombre) VALUES ('PorAd', 'Portugues (Fase de Admision)')
-INTO MATERIA (Codigo, Nombre) VALUES ('Qui', 'Quimica')
-SELECT * FROM DUAL;
-
-COMMIT;
-
--- SEDES desde Sedes.xlsx
-INSERT ALL
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('1', 'Facultad de Medicina', 'UNIVERSIDAD', '95115697E', '37106003Z')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('2', 'Complejo de EE.Sociales y Comercio', 'UNIVERSIDAD', '83582041G', '94949702N')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('3', 'Escuela de Ingenierias Industriales', 'UNIVERSIDAD', '02758528E', '78541977C')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('4', 'Facultad de Derecho', 'UNIVERSIDAD', '69575980A', '68375332C')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('5', 'Aulario Gerald Brenan', 'UNIVERSIDAD', '37106003M', '36605742L')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('6', 'E.T.S.Ing. de Telecomunicacion/ E.T.S. Ing. Informatica', 'UNIVERSIDAD', '94949702C', '95780079C')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('7', 'Fac. CC. de la Educacion', 'UNIVERSIDAD', '78541976B', '03173087M')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('8', 'Fac. de Filosofia y Letras', 'UNIVERSIDAD', '68375332L', '23065434Z')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('9', 'Aulario Severo Ochoa', 'UNIVERSIDAD', '36605742R', '39569835F')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('10', 'I.E.S. Reyes Catolicos', 'INSTITUTO', '95780079G', '54185897A')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('11', 'I.E.S. Arroyo de la Miel', 'INSTITUTO', '03173087N', '02670198N')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('12', 'I.E.S. Pintor Jose Maria Fernandez', 'INSTITUTO', '23065434S', '33242149T')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('13', 'I.E.S. Fuengirola', 'INSTITUTO', '39569834C', '89402973C')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('14', 'I.E.S. Rio Verde', 'INSTITUTO', '54185897C', '36331685E')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('15', 'I.E.S. Monterroso', 'INSTITUTO', '02670198A', '44690032R')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('16', 'I.E.S. Dr. Rodriguez Delgado', 'INSTITUTO', '95115697R', '47273167C')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('17', 'I.E.S. Valle del Azahar', 'INSTITUTO', '83582041Z', '34571357L')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('18', 'Facultad CC.de la Comunicacion y Facultad de Turismo', 'UNIVERSIDAD', '02758528U', '94795937T')
-INTO SEDE (Codigo, Nombre, Tipo, Vocal_Responsable_DNI, Vocal_Secretario_DNI) VALUES ('19', 'I.E.S. Maria Zambrano', 'INSTITUTO', '69575980V', '20146337C')
-SELECT * FROM DUAL;
-
-COMMIT;
+-- Los datos se importan manualmente mediante SQL Developer:
+--   - VOCALES desde Vocales.xlsx     → importar a tabla VOCAL
+--   - MATERIAS desde Materias.csv    → importar a tabla MATERIA
+--   - SEDES desde Sedes.xlsx         → importar a tabla SEDE
 
 
 -- ============================================================================
