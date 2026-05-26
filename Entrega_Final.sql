@@ -110,6 +110,18 @@ BEGIN
 END;
 /
 
+-- Borrado de políticas de auditoría del pasado
+BEGIN
+  EXECUTE IMMEDIATE 'NOAUDIT POLICY audit_asistencia_updates';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+BEGIN
+  EXECUTE IMMEDIATE 'DROP AUDIT POLICY audit_asistencia_updates';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
 
 -- ============================================================================
 -- CREACION DE TABLAS
@@ -1166,17 +1178,6 @@ END;
 /
 
 -- Auditoria unificada (Oracle 23ai)
-BEGIN
-  EXECUTE IMMEDIATE 'NOAUDIT POLICY audit_asistencia_updates';
-EXCEPTION WHEN OTHERS THEN NULL;
-END;
-/
-BEGIN
-  EXECUTE IMMEDIATE 'DROP AUDIT POLICY audit_asistencia_updates';
-EXCEPTION WHEN OTHERS THEN NULL;
-END;
-/
-
 CREATE AUDIT POLICY audit_asistencia_updates
   ACTIONS UPDATE ON PAU.ASISTENCIA;
 AUDIT POLICY audit_asistencia_updates;
