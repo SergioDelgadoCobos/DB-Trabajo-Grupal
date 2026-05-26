@@ -521,21 +521,6 @@ END;
 -- PARTE 2: SEGUNDA ENTREGA - INDICES, MV, SINONIMO, CENTROS, ASIGNACION
 -- ============================================================================
 
--- Reconstruir indices existentes en TS_INDICES
-DECLARE
-  CURSOR c_indices IS
-    SELECT index_name FROM user_indexes
-    WHERE tablespace_name != 'TS_INDICES' OR tablespace_name IS NULL;
-BEGIN
-  FOR idx IN c_indices LOOP
-    BEGIN
-      EXECUTE IMMEDIATE 'ALTER INDEX ' || idx.index_name || ' REBUILD TABLESPACE TS_INDICES';
-    EXCEPTION WHEN OTHERS THEN NULL;
-    END;
-  END LOOP;
-END;
-/
-
 -- Indices adicionales
 CREATE INDEX IDX_ESTUDIANTE_APELLIDOS_UP 
   ON ESTUDIANTE (UPPER(Apellidos)) TABLESPACE TS_INDICES;
