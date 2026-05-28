@@ -23,7 +23,6 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN NULL;
 END;
 /
-/
 
 PROMPT ========================================
 PROMPT 2. DROP USERS CREADOS DINAMICAMENTE (EST_*, VOC_*)
@@ -86,8 +85,15 @@ PROMPT 6. DROP USUARIO PAU (Borra en cascada Tablas, VPD, Vistas, Secuencias...)
 PROMPT ========================================
 BEGIN
   FOR s IN (SELECT sid, serial# FROM v$session WHERE username = 'PAU') LOOP
-    EXECUTE IMMEDIATE 'ALTER SYSTEM KILL SESSION ''' || s.sid || ',' || s.serial# || ''' IMMEDIATE';
+    BEGIN
+      EXECUTE IMMEDIATE 'ALTER SYSTEM KILL SESSION ''' || s.sid || ',' || s.serial# || ''' IMMEDIATE';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
   END LOOP;
+END;
+/
+
+BEGIN
   EXECUTE IMMEDIATE 'DROP USER PAU CASCADE';
   DBMS_OUTPUT.PUT_LINE('Usuario PAU eliminado (y todos sus objetos)');
 EXCEPTION WHEN OTHERS THEN NULL;
