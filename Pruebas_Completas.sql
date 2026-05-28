@@ -448,8 +448,6 @@ SELECT role, privilege
 FROM role_sys_privs 
 WHERE role IN ('ROL_ESTUDIANTE', 'ROL_VOCAL', 'ROL_ACCESO')
 ORDER BY role;
-WHERE grantee IN ('ROL_ESTUDIANTE', 'ROL_VOCAL', 'ROL_ACCESO')
-ORDER BY grantee;
 
 PROMPT ========================================
 PROMPT PRUEBA 26: RESUMEN FINAL
