@@ -62,6 +62,22 @@ LEFT JOIN SEDE s ON c.Sede_Codigo = s.Codigo
 ORDER BY s.Nombre NULLS LAST;
 
 PROMPT ========================================
+PROMPT PRUEBA 6.5: PROBAR FUNCION PUBLICA F_PLAZAS
+PROMPT ========================================
+DECLARE
+  v_sede VARCHAR2(20);
+  v_plazas_libres NUMBER;
+BEGIN
+  -- Pillamos una sede al azar
+  SELECT Codigo INTO v_sede FROM SEDE WHERE ROWNUM = 1;
+  
+  -- Llamamos explicitamente a la funcion como pide la prueba unitaria
+  v_plazas_libres := PK_ASIGNA.F_PLAZAS(v_sede);
+  DBMS_OUTPUT.PUT_LINE('La sede ' || v_sede || ' tiene ' || v_plazas_libres || ' plazas libres calculadas.');
+END;
+/
+
+PROMPT ========================================
 PROMPT PRUEBA 7: CREAR EXAMENES Y ASISTENCIAS
 PROMPT ========================================
 DECLARE
