@@ -433,19 +433,21 @@ PROMPT ========================================
 
 PROMPT --- 1. Privilegios a nivel de Columna (SEDE, EXAMEN y ASISTENCIA) ---
 SELECT grantee, table_name, column_name, privilege 
-FROM dba_col_privs 
+FROM user_col_privs_made 
 WHERE grantee IN ('ROL_ESTUDIANTE', 'ROL_VOCAL', 'ROL_ACCESO')
 ORDER BY grantee, table_name, column_name;
 
 PROMPT --- 2. Privilegios a nivel de Tabla, Vista o Paquete ---
 SELECT grantee, table_name, privilege 
-FROM dba_tab_privs 
+FROM user_tab_privs_made 
 WHERE grantee IN ('ROL_ESTUDIANTE', 'ROL_VOCAL', 'ROL_ACCESO')
 ORDER BY grantee, table_name, privilege;
 
 PROMPT --- 3. Privilegios de Sistema (CREATE SESSION) ---
-SELECT grantee, privilege 
-FROM dba_sys_privs 
+SELECT role, privilege 
+FROM role_sys_privs 
+WHERE role IN ('ROL_ESTUDIANTE', 'ROL_VOCAL', 'ROL_ACCESO')
+ORDER BY role;
 WHERE grantee IN ('ROL_ESTUDIANTE', 'ROL_VOCAL', 'ROL_ACCESO')
 ORDER BY grantee;
 

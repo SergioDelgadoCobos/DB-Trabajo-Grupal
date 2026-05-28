@@ -15,9 +15,14 @@ PROMPT 1. DROP AUDIT POLICY (Global)
 PROMPT ========================================
 BEGIN
   EXECUTE IMMEDIATE 'NOAUDIT POLICY audit_asistencia_updates';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+BEGIN
   EXECUTE IMMEDIATE 'DROP AUDIT POLICY audit_asistencia_updates';
 EXCEPTION WHEN OTHERS THEN NULL;
 END;
+/
 /
 
 PROMPT ========================================
