@@ -261,6 +261,9 @@ PROMPT ========================================
 PROMPT PRUEBA 18: VERIFICAR VPD Y AUDITORIA
 PROMPT ========================================
 SELECT policy_name, object_name FROM user_policies;
+SELECT policy_name, audit_option 
+FROM audit_unified_policies 
+WHERE policy_name = 'AUDIT_ASISTENCIA_UPDATES';
 
 PROMPT ========================================
 PROMPT PRUEBA 19: PROBAR MIGRAR_CENTRO (si hay datos)
